@@ -1,2 +1,57 @@
 # Spatial-Omics
 Spatial Transcriptomics bridges the gap between cellular identity and spatial geography. Traditional Sc-RNA profiles individual cells but destroys their spatial organization by dissociating tissue. ST preserves this architecture, allowing scientists to see exactly where genes are expressed and how cells interact within their native neighborhoods.  
+Demystifying Spatial Transcriptomics: From Tissue Slices to Data Matrices
+
+Spatial Transcriptomics (ST) bridges the gap between cellular identity and spatial geography. Traditional single-cell RNA sequencing (scRNA-seq) profiles individual cells but destroys their spatial organization by dissociating tissue. ST preserves this architecture, allowing scientists to see exactly where genes are expressed and how cells interact within their native neighborhoods. 
+
+A comprehensive breakdown of the core mechanics, active platforms powering this field as follow.
+
+Key Use Cases and Applications
+1. Map Cellular Neighborhoods: Pinpoint exact locations of rare cell sub-populations within complex tissues.
+2. Uncover Localized Biology: Identify signaling pathways restricted to micro-environments, like the tumor-stroma interface.
+3. Decode Cell Communication: Model true in-situ ligand-receptor interactions based on physical cell co-localization.
+4. Accelerate Drug Discovery: Discover niche-specific disease biomarkers and novel therapeutic drug targets.
+5. Integrate Histopathology: Overlay highly dimensional transcriptomic heatmaps directly on digital pathology images (H&E).
+
+Platform Breakdown:  ST technology generally splits into two functional categories: Sequencing-Based Capture (higher molecular depth) and Imaging-Based Hybridization (higher cellular resolution). 
+
+1. Sequencing-Based Platforms (sST)
+a. 10x Genomics Visium / Visium HD: Slides contain thousands of microscopic spots with oligonucleotides containing unique spatial barcodes (CIDs). Tissue is permeabilized, RNA is captured on the spots, and then sequenced via Next-Generation Sequencing (NGS).
+
+b. BGI Stereo-seq: Employs DNA Nanoball (DNB) patterned arrays on a chip to achieve ultra-high density capture of transcripts before NGS.
+
+c. Curio Bioscience (Curio Seeker / Slide-seq) Uses a monolayer of packed, spatially barcoded beads on a glass surface to bind RNA molecules prior to library preparation and sequencing.
+
+d. NanoString GeoMx: Employs oligo-labeled antibodies or RNA probes with photocleavable linkers. A pathologist selects Regions of Interest (ROIs), a UV laser cleaves the barcodes, and they are collected for sequencing.
+
+2. Imaging-Based Platforms (iST)
+a. 10x Genomics Xenium / NanoString CosMx (SMI) / Vizgen MERFISH: In-situ hybridization (ISH). Fluorescently labeled probes bind directly to specific target RNA molecules inside intact tissue. The platform uses cycles of fluorescent imaging, chemical stripping, and computational decoding to "read" the genetic targets.
+
+Refernces: https://lnkd.in/dRhwzaRY 
+
+Moving from raw sequencing reads to a biological count matrix is where the real magic happens in Sequencing-based Spatial Transcriptomics (sST)! 
+Whether you are working with 10x Genomics Visium, BGI STOmics Stereo-seq, or Curio Seeker, raw FASTQ files don't mean much until they are deconvolved, aligned, and binned.
+
+Here is my breakdown of how we transform raw sequencing data into spatial insights:
+
+1. The Anatomy of a Read (Paired-End Structure)
+Before jumping into the command line, you must understand your library structure:
+Read 1: The "GPS coordinate" of the cell. It contains the Coordinate ID (CID) (spatial barcode) and the Molecule ID/UMI to eliminate PCR duplication biases.
+Read 2: The biological payload. This holds the cDNA transcript fragment or probe sequence destined for genomic alignment.
+
+
+2. The 4 Core Preprocessing Steps
+Every standard sST pipeline—regardless of the vendor—relies on these foundational steps:
+a. Barcode Deconvolution: Mapping CIDs back to physical tissue locations. This can be fixed (like Visium) or chip-specific/random (like Stereo-seq).
+b. Read Alignment: Standard aligners like STAR or Rsubread map transcripts back to an annotated reference genome.
+c. Filtering & QC: Purging low-quality scores, unmapped CIDs, and ambiguous multi-mappers. Toolkits like stPipe generate UMI duplication distributions here to evaluate sequencing depth.
+d. Counting & Binning: Aggregating data into square bins (e.g., Bin 20, 50, 100) to reduce data sparsity, or leveraging high-resolution DAPI staining/microscopy for exact cellular-resolution segmentation.
+
+
+3. Tool of the Trade: Vendor vs. Agnostic Pipelines
+Depending on the project architecture, we leverage different pipelines to get the job done:
+a. Space Ranger / SAW: Vendor-specific pipelines optimized for Visium (including HD) and Stereo-seq.
+b. Curio Seeker Pipeline: A Nextflow-based framework tailored for bead-distribution architectures using UMItools.
+c. stPipe: An incredible, platform-agnostic R-based solution that unifies workflows across different technologies and seamlessly exports to downstream objects like SpatialExperiment, Seurat, or Squidpy.
+
+Data preprocessing is the bridge between raw tissue chemistry and downstream computational breakthroughs. Getting the QC right at the read level is non-negotiable for accurate differential expression and spatial clustering later on!
