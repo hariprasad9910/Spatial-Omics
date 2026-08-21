@@ -1,0 +1,28 @@
+Demystifying Spatial Transcriptomics: From Tissue Slices to Data Matrices
+
+Spatial Transcriptomics (ST) bridges the gap between cellular identity and spatial geography. Traditional single-cell RNA sequencing (scRNA-seq) profiles individual cells but destroys their spatial organization by dissociating tissue. ST preserves this architecture, allowing scientists to see exactly where genes are expressed and how cells interact within their native neighborhoods. 
+
+A comprehensive breakdown of the core mechanics, active platforms powering this field as follow.
+
+Key Use Cases and Applications
+1. Map Cellular Neighborhoods: Pinpoint exact locations of rare cell sub-populations within complex tissues.
+2. Uncover Localized Biology: Identify signaling pathways restricted to micro-environments, like the tumor-stroma interface.
+3. Decode Cell Communication: Model true in-situ ligand-receptor interactions based on physical cell co-localization.
+4. Accelerate Drug Discovery: Discover niche-specific disease biomarkers and novel therapeutic drug targets.
+5. Integrate Histopathology: Overlay highly dimensional transcriptomic heatmaps directly on digital pathology images (H&E).
+
+Platform Breakdown:  ST technology generally splits into two functional categories: Sequencing-Based Capture (higher molecular depth) and Imaging-Based Hybridization (higher cellular resolution). 
+
+1. Sequencing-Based Platforms (sST)
+a. 10x Genomics Visium / Visium HD: Slides contain thousands of microscopic spots with oligonucleotides containing unique spatial barcodes (CIDs). Tissue is permeabilized, RNA is captured on the spots, and then sequenced via Next-Generation Sequencing (NGS).
+
+b. BGI Stereo-seq: Employs DNA Nanoball (DNB) patterned arrays on a chip to achieve ultra-high density capture of transcripts before NGS.
+
+c. Curio Bioscience (Curio Seeker / Slide-seq) Uses a monolayer of packed, spatially barcoded beads on a glass surface to bind RNA molecules prior to library preparation and sequencing.
+
+d. NanoString GeoMx: Employs oligo-labeled antibodies or RNA probes with photocleavable linkers. A pathologist selects Regions of Interest (ROIs), a UV laser cleaves the barcodes, and they are collected for sequencing.
+
+2. Imaging-Based Platforms (iST)
+a. 10x Genomics Xenium / NanoString CosMx (SMI) / Vizgen MERFISH: In-situ hybridization (ISH). Fluorescently labeled probes bind directly to specific target RNA molecules inside intact tissue. The platform uses cycles of fluorescent imaging, chemical stripping, and computational decoding to "read" the genetic targets.
+
+Refernces: https://lnkd.in/dRhwzaRY 
