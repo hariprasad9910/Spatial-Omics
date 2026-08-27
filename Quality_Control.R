@@ -349,3 +349,9 @@ ex <- rowSums(counts(spe_save)) != 0
 spe_save <- spe_save[ex, ]
 # save object
 saveRDS(spe_save, "seq-spe_qc.rds")
+
+
+#References
+# https://doi.org/10.1038/s41593-020-00787-0
+# https://doi.org/10.1186/s13059-024-03241-7
+# https://doi.org/10.1038/s41592-025-02713-3.
