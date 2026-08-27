@@ -22,121 +22,228 @@ spe <- Visium_humanDLPFC()
 spe_save <- spe
 
 # ==============================================================================
-# STEP 3: INITIAL FILTRATION & MITOCHONDRIAL METRIC COMPUTATION
+# STEP 3: CALCULATE QC METRICS
 # ==============================================================================
 
-# Subset the experiment to retain only spots over the physical tissue section.
-# Background spots capture cellular debris/ambient RNA and distort calculations.
+# subset to keep only spots over tissue
 spe <- spe[, spe$in_tissue == 1]
+dim(spe)
 
-# Identify mitochondrial genes using regular expressions matching 'MT-' or 'mt-' prefixes
+# identify mitochondrial genes
 is_mito <- grepl("(^MT-)|(^mt-)", rowData(spe)$gene_name)
+table(is_mito)
 
-# Compute per-spot QC metrics (Library Size [sum], Unique Genes [detected], and Mito Proportion)
-# We handle spots identically to individual cells at this operational phase.
-spe <- quickRnaQc.se(spe, subsets = list(mito = is_mito))
+rowData(spe)$gene_name[is_mito]
 
+# calculate per-spot QC metrics and store in colData
+spe <- quickRnaQc.se(spe, subsets=list(mito=is_mito))
+
+head(colData(spe))
+
+# keep copy of object to save later
+spe_save <- spe
 
 # ==============================================================================
-# STEP 4: GLOBAL THRESHOLD APPLICATION & PLOTTING
+# STEP 4: GLOBAL OUTLIER DETECTION
 # ==============================================================================
 
-# Define basic global thresholds based on initial exploratory visualizations:
-# Spots with fewer than 600 UMIs, < 400 genes, or > 30% mitochondrial reads are flagged.
-spe$qc_lib_size   <- spe$sum < 600
-spe$qc_detected   <- spe$detected < 400
-spe$qc_mito_prop  <- spe$subset.proportion.mito > 0.30
+# To select thresholds for several QC metrics in our human DLPFC dataset: 
+#(i) library size, (ii) number of expressed genes, (iii) proportion of mitochondrial reads, and 
+#(iv) number of cells per spot.
 
-# Optional: Visualize global diagnostic metrics against total tissue cell count
-p1 <- plotObsQC(spe, plot_type = "scatter", x_metric = "cell_count", y_metric = "sum", y_threshold = 600)
-p2 <- plotObsQC(spe, plot_type = "scatter", x_metric = "cell_count", y_metric = "subset.proportion.mito", y_threshold = 0.30)
+par(mfrow=c(1, 4))
+hist(spe$sum, xlab="sum", main="UMIs per spot")
+hist(spe$detected, xlab="detected", main="Genes per spot")
+hist(spe$subset.proportion.mito, xlab="proportion mito", main="Proportion mito UMIs")
+hist(spe$cell_count, xlab="no. cells", main="No. cells per spot")
+
+par(mfrow=c(1, 1))
+
+
+# plot library size vs. number of cells per spot
+p1 <- plotObsQC(spe, 
+                plot_type="scatter", 
+                x_metric="cell_count", 
+                y_metric="sum",
+                y_threshold=600) + 
+  ggtitle("Library size vs. cells per spot")
+
+# plot mito proportion vs. number of cells per spot
+p2 <- plotObsQC(spe, 
+                plot_type="scatter", 
+                x_metric="cell_count", 
+                y_metric="subset.proportion.mito",
+                y_threshold=0.30) +
+  ggtitle("Mito proportion vs. cells per spot")
+
 p1 | p2
 
-# Generate spatial mapping plots to ensure global filters are not systematically 
-# stripping out distinct biological anatomical features (e.g., specific cortical layers).
-p_spatial_lib   <- plotObsQC(spe, plot_type = "spot", annotate = "qc_lib_size")
-p_spatial_genes <- plotObsQC(spe, plot_type = "spot", annotate = "qc_detected")
-p_spatial_mito  <- plotObsQC(spe, plot_type = "spot", annotate = "qc_mito_prop")
-p_spatial_lib | p_spatial_genes | p_spatial_mito
+# select QC thresholds for library size, 
+# detected features & mito. proportion
+spe$qc_lib_size <- spe$sum < 600
+spe$qc_detected <- spe$detected < 400
+spe$qc_mito_prop <- spe$subset.proportion.mito > 0.30
+
+# tabulate number of cells kept/flagged by each
+qc <- grep("^qc", names(colData(spe)))
+sapply
+
+
+# check spatial pattern of discarded spots
+p1 <- plotObsQC(spe, 
+                plot_type="spot", annotate="qc_lib_size") + 
+  ggtitle("Library size (< 600 UMI)")
+
+p2 <- plotObsQC(spe, 
+                plot_type="spot", annotate="qc_detected") + 
+  ggtitle("Detected genes (< 400 genes)")
+
+p3 <- plotObsQC(spe, 
+                plot_type="spot", annotate="qc_mito_prop") + 
+  ggtitle("Mito proportion (> 0.30)")
+
+p1 | p2 | p3
+
+
+# check spatial pattern of discarded spots if threshold is too high
+spe$qc_lib_size_2000 <- spe$sum < 2000
+
+# plot the spots flagged with the high threshold
+p1 <- plotObsQC(spe, 
+                plot_type="spot", annotate="qc_lib_size_2000") + 
+  ggtitle("Library size (< 2000 UMI)")
+
+# plot manually annotated reference layers
+p2 <- plotCoords(spe, 
+                 annotate="ground_truth", pal="libd_layer_colors") + 
+  ggtitle("Manually annotated layers")
+
+# plot library size by manual annotation
+p3 <- plotColData(spe, 
+                  x="ground_truth", y="sum", colour_by="ground_truth") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  ggtitle("Library size by layer") + xlab("")
+
+p1 | p2 | p3
+
+# library size and outliers
+p1 <- plotObsQC(spe, 
+                plot_type="violin", x_metric="sum", 
+                annotate="qc_lib_size", point_size=0.5) + 
+  xlab("Library size")
+
+# detected genes and outliers
+p2 <- plotObsQC(spe, 
+                plot_type="violin", x_metric="detected", 
+                annotate="qc_detected", point_size=0.5) + 
+  xlab("Detected genes") 
+
+# mito proportion and outliers
+p3 <- plotObsQC(spe, 
+                plot_type="violin", x_metric="subset.proportion.mito",
+                annotate="qc_mito_prop", point_size=0.5) +
+  xlab("Mito proportion")
+
+p1 | p2 | p3
 
 # ==============================================================================
-# STEP 5: NEIGHBORHOOD-BASED LOCAL OUTLIER DETECTION (via SpotSweeper)
+# STEP 5: LOCAL OUTLIER DETECTION
 # ==============================================================================
 
-# Run local outlier assessment by evaluating spots against immediate surrounding tissue coordinates.
-# For Visium's hexagonal layout, k = 36 computes 3 full rings of concentric neighbors.
-# Note: For square grid arrangements (e.g., STOmics, Visium HD), use k = 48.
-# Log transformations are applied to count parameters to force normal distributions.
-spe <- localOutliers(spe, metric = "sum", direction = "lower", log = TRUE)
-spe <- localOutliers(spe, metric = "detected", direction = "lower", log = TRUE)
-spe <- localOutliers(spe, metric = "subset.proportion.mito", direction = "higher", log = FALSE)
+# detect local outliers based on library size, unique genes, mito. proportion
+spe <- localOutliers(spe, metric="sum", direction="lower", log=TRUE)
+spe <- localOutliers(spe, metric="detected", direction="lower", log=TRUE)
+spe <- localOutliers(spe, metric="subset.proportion.mito", direction="higher", log=FALSE)
 
-# Generate comparative diagnostic visualizations matching log features against calculated local outliers
-p_lib_log <- plotCoords(spe, annotate = "sum_log")
-p_lib_out <- plotObsQC(spe, plot_type = "spot", in_tissue = "in_tissue", annotate = "sum_outliers", point_size = 0.2)
-(p_lib_log / p_lib_out)
+# spot plot of log-transformed library size
+p1 <- plotCoords(spe, 
+                 annotate="sum_log") + 
+  ggtitle("log2(Library Size)")
+
+p2 <- plotObsQC(spe, 
+                plot_type="spot", in_tissue="in_tissue", 
+                annotate="sum_outliers", point_size=0.2) + 
+  ggtitle("Local Outliers (Library Size)")
+
+# spot plot of log-transformed detected genes
+p3 <- plotCoords(spe, 
+                 annotate="detected_log") + 
+  ggtitle("log2(Detected)")
+
+p4 <- plotObsQC(spe, 
+                plot_type="spot", in_tissue="in_tissue", 
+                annotate="detected_outliers", point_size=0.2) + 
+  ggtitle("Local Outliers (Detected)")
+
+# spot plot of mitochondrial proportion
+p5 <- plotCoords(spe, 
+                 annotate="subset.proportion.mito") +
+  ggtitle("Mito Proportion")
+
+p6 <- plotObsQC(spe, 
+                plot_type="spot", in_tissue="in_tissue", 
+                annotate="subset.proportion.mito_outliers", point_size=0.2) +
+  ggtitle("Local Outliers (Mito Prop)")
+
+# plot using patchwork
+(p1 / p2) | (p3 / p4) | (p5 / p6)
+
+
+# z-transformed library size and outliers
+p1 <- plotObsQC(spe, 
+                plot_type="violin", x_metric="sum_z", 
+                annotate="sum_outliers", point_size=0.5) + 
+  xlab("sum_outliers")
+
+# z-transformed detected genes and outliers
+p2 <- plotObsQC(spe, 
+                plot_type="violin", x_metric="detected_z", 
+                annotate="detected_outliers", point_size=0.5) + 
+  xlab("detected_outliers")
+
+# z-transformed mito proportion and outliers
+p3 <- plotObsQC(spe, 
+                plot_type="violin", x_metric="subset.proportion.mito_z",
+                annotate="subset.proportion.mito_outliers", point_size=0.5) +
+  xlab("mito_outliers")
+
+p1 | p2 | p3
 
 # ==============================================================================
-# STEP 6: SPOT SELECTION ACCORDING TO CELL DENSITY AND HISTOLOGY
+# STEP 6: REMOVE LOW QUALITY SPOTS 
 # ==============================================================================
 
-# Spots with excessively high cell counts coupled with low gene detection are indicative
-# of physical compression, tissue damage, or severe computational segmentation error.
-# We establish an empirical cap of 10 cells per spot for standard cortical sections.
-spe$qc_cell_count <- spe$cell_count > 10
-
-# Crucial Architectural Rule: Do NOT blindly delete spots with a cell count of 0!
-# In brain tissue, 0-cell spots map to neuropil (dense networks of axons and dendrites) 
-# which contain distinct, biologically essential subcellular transcript profiles.
-
-# ==============================================================================
-# STEP 7: MULTISCALE LOCAL VARIANCE SCANNING AND HANGNAIL ARTIFACT REMOVAL
-# ==============================================================================
-
-# Load a dedicated verification dataset containing a confirmed hangnail artifact
-data(DLPFC_artifact)
-spe.hangnail <- DLPFC_artifact
-
-# Flag spatial mitochondrial mapping profiles on the testing object
-is_mito_hn   <- grepl("(^MT-)|(^mt-)", rowData(spe.hangnail)$gene_name)
-spe.hangnail <- quickRnaQc.se(spe.hangnail, subsets = list(mito = is_mito_hn))
-
-# Quantify local mitochondrial variance to map structural anomalies
-spe.hangnail <- localVariance(spe.hangnail, n_neighbors = 36, 
-                              metric = "subset.proportion.mito", name = "local_mito_variance_k36")
-
-# Execute multiscale classification tool across 7 concentric rings (n_order = 7).
-# Note: Ensure shape corresponds exactly to your spatial physical substrate configuration.
-spe.hangnail <- findArtifacts(spe.hangnail, mito_percent = "expr_chrM_ratio", 
-                              mito_sum = "expr_chrM", n_order = 7, 
-                              shape = "hexagonal", name = "artifact")
-
-# Perform hard filtration of the technical artifact layer
-spe.hangnail <- spe.hangnail[, !spe.hangnail$artifact]
-
-# ==============================================================================
-# STEP 8: HARVEST DATASET AND EXPORT FOR DOWNSTREAM COMPUTE PIPELINES
-# ==============================================================================
-
-# Tune final mitochondrial cutoff filter threshold
+# select updated threshold for mito proportion
 spe$qc_mito <- spe$subset.proportion.mito > 0.28
+table(spe$qc_mito)
 
-# Combine distinct logical vectors across all outlier methodologies
-spe$global_outliers <- spe$qc_lib_size | spe$qc_detected | spe$qc_mito | spe$qc_cell_count
-spe$local_outliers  <- spe$sum_outliers | spe$detected_outliers | spe$subset.proportion.mito_outliers
+# combine global/local outliers
+spe$global_outliers <- 
+  spe$qc_lib_size | 
+  spe$qc_detected | 
+  spe$qc_mito
+spe$local_outliers <- 
+  spe$sum_outliers | 
+  spe$detected_outliers | 
+  spe$subset.proportion.mito_outliers
 
-# Construct final intersection vector for filtration processing
-spe$discard <- spe$global_outliers | spe$local_outliers
+rbind( # tabulate kept/flagged cells
+  global=table(spe$global_outliers),
+  local=table(spe$local_outliers))
 
-# Slice out all poor quality/technical artifact coordinates from dataset matrix
+
+# check spatial pattern of combined set of discarded spots
+plotObsQC(spe, plot_type="spot", annotate="global_outliers") +
+  plotObsQC(spe, plot_type="spot", annotate="local_outliers")
+
+
+# combine local and global outliers &
+# remove combined set of low-quality spots
+spe$discard <- 
+  spe$global_outliers | 
+  spe$local_outliers
 spe <- spe[, !spe$discard]
 
-# Drop clean unexpressed genes (rows containing entirely zero count occurrences across spots)
+# remove features with all 0 counts
 spe <- spe[rowSums(counts(spe)) > 0, ]
-
-# Apply identical processing steps to baseline storage copy and write data to disk
-ex <- rowSums(counts(spe_save)) != 0
-spe_save <- spe_save[ex, ]
-saveRDS(spe_save, "seq-spe_qc.rds")
-
-
+dim(spe)
